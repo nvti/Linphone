@@ -1,0 +1,1 @@
+#define LIBLINPHONE_GIT_VERSION "3.8.5"
