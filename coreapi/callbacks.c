@@ -17,6 +17,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+/*modified by Le Ngoc Linh
+modify call_received() function to check if blocked before instantiate 
+the call object
+*/
 
 #include "sal/sal.h"
 
@@ -251,10 +255,13 @@ static void call_received(SalOp *h){
 	LinphoneCall *call;
 	char *alt_contact;
 	LinphoneAddress *from_addr=NULL;
+	//Linh's modification
+	LinphoneAddress *from_addr_for_check = NULL;
 	LinphoneAddress  *to_addr=NULL;
 	LinphoneAddress *from_address_to_search_if_me=NULL; /*address used to know if I'm the caller*/
 	SalMediaDescription *md;
 	const char * p_asserted_id;
+	char *tmp_addr;
 
 	/* first check if we can answer successfully to this invite */
 	if (linphone_presence_model_get_basic_status(lc->presence_model) == LinphonePresenceBasicStatusClosed) {
@@ -329,6 +336,19 @@ static void call_received(SalOp *h){
 		return;
 	} else if (from_address_to_search_if_me) {
 		linphone_address_destroy(from_address_to_search_if_me);
+	}
+	
+	//check call address if blocked
+	from_addr_for_check = from_addr;
+	linphone_address_clean(from_addr_for_check);
+	tmp_addr = linphone_address_as_string(from_addr_for_check);
+	
+	if (linphone_check_address_block(tmp_addr)){
+		linphone_address_destroy(from_addr_for_check);
+		sal_call_decline(h,SalReasonForbidden,NULL);
+		sal_op_release(h);
+		ms_free(tmp_addr);
+		return;
 	}
 
 	call=linphone_call_new_incoming(lc,from_addr,to_addr,h);
@@ -872,7 +892,7 @@ static void call_failure(SalOp *op){
 		case SalReasonDoNotDisturb:
 			msg=msg600;
 			linphone_core_notify_display_status(lc,msg600);
-		break;
+		break;		
 		case SalReasonUnsupportedContent: /*<this is for compatibility: linphone sent 415 because of SDP offer answer failure*/
 		case SalReasonNotAcceptable:
 			ms_message("Outgoing call [%p] failed with SRTP and/or AVPF enabled", call);

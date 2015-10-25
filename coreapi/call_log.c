@@ -22,6 +22,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <time.h>
 #include "private.h"
 
+/******************************************************************************/
+#include <time.h>
+#include "call_log_save.c"
+/******************************************************************************/
 
 /*******************************************************************************
  * Internal functions                                                          *
@@ -66,6 +70,14 @@ void call_logs_write_to_config_file(LinphoneCore *lc){
 	char *tmp;
 	LpConfig *cfg=lc->config;
 
+/******************************************************************************/
+	int logfilestatus = 1;
+	const char * format = "%a %b %d %Y %T %z %Z";
+	struct tm *temp_time = NULL;
+	char start_date[200];
+	if(write_log_header() < 0) logfilestatus = 0;
+/******************************************************************************/
+
 	if (linphone_core_get_global_state (lc)==LinphoneGlobalStartup) return;
 
 	for(i=0,elem=lc->call_logs;elem!=NULL;elem=elem->next,++i){
@@ -88,11 +100,51 @@ void call_logs_write_to_config_file(LinphoneCore *lc){
 		lp_config_set_float(cfg,logsection,"quality",cl->quality);
 		lp_config_set_int(cfg,logsection,"video_enabled", cl->video_enabled);
 		lp_config_set_string(cfg,logsection,"call_id",cl->call_id);
+
+/******************************************************************************/
+		if(logfilestatus){
+			char status[20];
+			char c_time[50];
+			switch(cl->status){
+				case LinphoneCallSuccess: sprintf(status, "%s", "Success"); break;
+				case LinphoneCallAborted: sprintf(status, "%s", "Aborted"); break;
+				case LinphoneCallMissed: sprintf(status, "%s", "Missed"); break;
+				default: sprintf(status, "%s", "Declined");
+			}
+
+			if (cl->start_date_time){
+				temp_time = localtime(&(cl->start_date_time));
+				if (strftime(start_date, sizeof(start_date), format, temp_time) == 0)
+					sprintf(c_time, "%ld", (int64_t)cl->start_date_time);
+				else
+					sprintf(c_time, "%s", start_date);
+			} else sprintf(c_time, "%s", cl->start_date);
+
+			write_log_row(
+				i, 
+				cl->dir, 
+				status, 
+				linphone_address_as_string(cl->from),
+				linphone_address_as_string(cl->to),
+				c_time,
+				cl->duration,
+				cl->quality,
+				(int)cl->video_enabled,
+				cl->call_id
+			);
+		}
+/******************************************************************************/
 	}
 	for(;i<lc->max_call_logs;++i){
 		snprintf(logsection,sizeof(logsection),"call_log_%i",i);
 		lp_config_clean_section(cfg,logsection);
 	}
+
+/******************************************************************************/
+	if(logfilestatus){
+		write_log_footer();
+	}
+/******************************************************************************/
 }
 
 void call_logs_read_from_config_file(LinphoneCore *lc){

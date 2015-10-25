@@ -18,6 +18,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+/* modified by Le Ngoc Linh
+add linphone_check_address_block() function
+modify linphone_core_notify_incoming_call()
+date: 0ct 25, 2015*/
+
+
 #include "linphonecore.h"
 #include "sipsetup.h"
 #include "lpconfig.h"
@@ -36,6 +42,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "mediastreamer2/msvolume.h"
 #include "mediastreamer2/msequalizer.h"
 #include "mediastreamer2/dtmfgen.h"
+
 
 #ifdef INET6
 #ifndef WIN32
@@ -3314,15 +3321,48 @@ bool_t linphone_core_incompatible_security(LinphoneCore *lc, SalMediaDescription
 	return linphone_core_is_media_encryption_mandatory(lc) && linphone_core_get_media_encryption(lc)==LinphoneMediaEncryptionSRTP && !sal_media_description_has_srtp(md);
 }
 
+int linphone_check_address_block(char *address){
+	//blocked address read from block list
+	char *blocked_addr = NULL;
+	size_t len = 0;
+	
+	//list's reading
+	FILE *block_list;
+	ssize_t read;
+	char * tmp_path = getenv("HOME");
+	char path[100];
+	sprintf(path, "%s/.linphone/block_list.txt", tmp_path);
+	block_list = fopen(path, "rt");
+	
+	if(block_list == NULL) return -1;
+	while((read=getline(&blocked_addr, &len, block_list)) != -1){
+		if (*(blocked_addr+strlen(blocked_addr)-1) == '\n')
+			*(blocked_addr+strlen(blocked_addr)-1) = '\0';
+		if(strcmp(blocked_addr,address) == 0)		
+			return 1;		
+	}
+	//close file
+	fclose(block_list);
+	if(blocked_addr)
+		free(blocked_addr);
+	return 0;
+}
+
 void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
 	char *barmesg;
 	char *tmp;
+	FILE *INCOMING_LOG_FILE;
 	LinphoneAddress *from_parsed;
-	bool_t propose_early_media=lp_config_get_int(lc->config,"sip","incoming_calls_early_media",FALSE);
 
+	bool_t propose_early_media=lp_config_get_int(lc->config,"sip","incoming_calls_early_media",FALSE);
+	//test incoming call's address
+	INCOMING_LOG_FILE = fopen("INCOMING_CALL_ADDRESS.txt", "a");
 	from_parsed=linphone_address_new(sal_op_get_from(call->op));
 	linphone_address_clean(from_parsed);
 	tmp=linphone_address_as_string(from_parsed);
+	fprintf(INCOMING_LOG_FILE, "%s\n", tmp);
+	fclose(INCOMING_LOG_FILE);
+	
 	linphone_address_destroy(from_parsed);
 	barmesg=ortp_strdup_printf("%s %s%s",tmp,_("is contacting you"),
 		(sal_call_autoanswer_asked(call->op)) ?_(" and asked autoanswer."):".");
@@ -3372,8 +3412,14 @@ void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
 			linphone_core_accept_call(lc,call);
 		}
 	}
-	linphone_call_unref(call);
+	
 
+	if (linphone_check_address_block(tmp)){
+		//decline the call if blocked
+		linphone_core_decline_call(lc, call,LinphoneReasonDeclined);
+	}
+
+	linphone_call_unref(call);
 	ms_free(barmesg);
 	ms_free(tmp);
 }

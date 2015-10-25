@@ -16,6 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
+/* modified by Le Ngoc Linh
+add linphone_check_address_block()
+*/
+
 #ifndef LINPHONECORE_H
 #define LINPHONECORE_H
 
@@ -413,6 +418,7 @@ LINPHONE_PUBLIC void linphone_address_set_password(LinphoneAddress *addr, const 
 LINPHONE_PUBLIC const char *linphone_address_get_password(const LinphoneAddress *addr);
 LINPHONE_PUBLIC void linphone_address_set_header(LinphoneAddress *addr, const char *header_name, const char *header_value);
 LINPHONE_PUBLIC	void linphone_address_destroy(LinphoneAddress *u);
+LINPHONE_PUBLIC int linphone_check_address_block(char *address);
 
 /**
  * Create a #LinphoneAddress object by parsing the user supplied address, given as a string.
