@@ -94,6 +94,32 @@ void linphone_gtk_call_log_add_contact(GtkWidget *w){
 	}
 }
 
+void linphone_gtk_call_log_add_blocklist(GtkWidget *w){
+	GtkTreeSelection *select;
+	GtkTreeIter iter;
+
+	select=gtk_tree_view_get_selection(GTK_TREE_VIEW(w));
+	if (select!=NULL){
+		GtkTreeModel *model=NULL;
+		if (gtk_tree_selection_get_selected (select,&model,&iter)){
+			gpointer pcl;
+			LinphoneAddress *la;
+			LinphoneCallLog *cl;
+
+			gtk_tree_model_get(model,&iter,2,&pcl,-1);
+			cl = (LinphoneCallLog *)pcl;
+			la = linphone_call_log_get_dir(cl)==LinphoneCallIncoming ? linphone_call_log_get_from(cl) : linphone_call_log_get_to(cl);
+			if (la != NULL){
+				char *uri=linphone_address_as_string(la);
+				if(linphone_check_address_block(uri) == 0){
+					linphone_add_blocklist(uri);
+				}
+			}
+
+		}
+	}
+}
+
 static bool_t put_selection_to_uribar(GtkWidget *treeview){
 	GtkTreeSelection *sel;
 	sel=gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
@@ -129,6 +155,9 @@ static GtkWidget *linphone_gtk_create_call_log_menu(GtkWidget *call_log){
 	GtkWidget *menu_item;
 	gchar *call_label=NULL;
 	gchar *text_label=NULL;
+
+	gchar *blocklist=NULL;
+
 	gchar *name=NULL;
 	GtkWidget *image;
 	GtkTreeSelection *select;
@@ -147,6 +176,7 @@ static GtkWidget *linphone_gtk_create_call_log_menu(GtkWidget *call_log){
 			name=linphone_address_as_string(la);
 			call_label=g_strdup_printf(_("Call %s"),name);
 			text_label=g_strdup_printf(_("Send text to %s"),name);
+			blocklist=g_strdup_printf("Add to block list");
 			ms_free(name);
 		}
 	}
@@ -168,6 +198,15 @@ static GtkWidget *linphone_gtk_create_call_log_menu(GtkWidget *call_log){
 		gtk_menu_shell_append(GTK_MENU_SHELL(menu),menu_item);
 		g_signal_connect_swapped(G_OBJECT(menu_item),"activate",(GCallback)linphone_gtk_call_log_chat_selected,call_log);
 	}
+
+	menu_item=gtk_image_menu_item_new_with_label(blocklist);
+	image=gtk_image_new_from_stock(GTK_STOCK_CANCEL,GTK_ICON_SIZE_MENU);
+	gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(menu_item),image);
+	gtk_widget_show(image);
+	gtk_widget_show(menu_item);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu),menu_item);
+	g_signal_connect_swapped(G_OBJECT(menu_item),"activate",(GCallback)linphone_gtk_call_log_add_blocklist,call_log);
+
 	menu_item=gtk_image_menu_item_new_from_stock(GTK_STOCK_ADD,NULL);
 	gtk_widget_show(menu_item);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu),menu_item);

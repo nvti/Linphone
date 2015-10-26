@@ -3325,7 +3325,8 @@ int linphone_check_address_block(char *address){
 	//blocked address read from block list
 	char *blocked_addr = NULL;
 	size_t len = 0;
-	
+	int check = 0;
+
 	//list's reading
 	FILE *block_list;
 	ssize_t read;
@@ -3338,16 +3339,32 @@ int linphone_check_address_block(char *address){
 	while((read=getline(&blocked_addr, &len, block_list)) != -1){
 		if (*(blocked_addr+strlen(blocked_addr)-1) == '\n')
 			*(blocked_addr+strlen(blocked_addr)-1) = '\0';
-		if(strcmp(blocked_addr,address) == 0)		
-			return 1;		
+		if(strcmp(blocked_addr,address) == 0){
+			check = 1;
+			break;
+		}
 	}
 	//close file
 	fclose(block_list);
 	if(blocked_addr)
 		free(blocked_addr);
-	return 0;
+	return check;
 }
 
+int linphone_add_blocklist(char *address){
+	FILE *block_list;
+	char * tmp_path = getenv("HOME");
+	char path[100];
+	sprintf(path, "%s/.linphone/block_list.txt", tmp_path);
+	block_list = fopen(path, "a");
+
+	if(block_list == NULL) return -1;
+
+	fprintf(block_list, "%s\n", address);
+	fclose(block_list);
+
+	return 0;
+}
 void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
 	char *barmesg;
 	char *tmp;

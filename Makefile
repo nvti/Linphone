@@ -497,7 +497,7 @@ BUNDLEDIR = $(BUNDLEPREFIX)$(MACAPPNAME)
 #a path prefix where additional libs can be cherry-picked by the bundler.
 LINPHONE_ADDITIONAL_DEPENDENCIES_PREFIX = /usr/local
 all: config.h
-	mkdir $(HOME)/.linphone
+	mkdir -p $(HOME)/.linphone
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
