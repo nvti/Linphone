@@ -3321,7 +3321,7 @@ bool_t linphone_core_incompatible_security(LinphoneCore *lc, SalMediaDescription
 	return linphone_core_is_media_encryption_mandatory(lc) && linphone_core_get_media_encryption(lc)==LinphoneMediaEncryptionSRTP && !sal_media_description_has_srtp(md);
 }
 
-int linphone_check_address_block(char *address){
+int linphone_check_address_block(char *address, int callblock){
 	//blocked address read from block list
 	char *blocked_addr = NULL;
 	size_t len = 0;
@@ -3332,7 +3332,10 @@ int linphone_check_address_block(char *address){
 	ssize_t read;
 	char * tmp_path = getenv("HOME");
 	char path[100];
-	sprintf(path, "%s/.linphone/block_list.txt", tmp_path);
+	if(callblock)
+		sprintf(path, "%s/.linphone/call_block_list.txt", tmp_path);
+	else
+		sprintf(path, "%s/.linphone/chat_block_list.txt", tmp_path);
 	block_list = fopen(path, "rt");
 	
 	if(block_list == NULL) return -1;
@@ -3351,11 +3354,16 @@ int linphone_check_address_block(char *address){
 	return check;
 }
 
-int linphone_add_blocklist(char *address){
+int linphone_add_blocklist(char *address, int callblock){
 	FILE *block_list;
 	char * tmp_path = getenv("HOME");
 	char path[100];
-	sprintf(path, "%s/.linphone/block_list.txt", tmp_path);
+	
+	if(callblock)
+		sprintf(path, "%s/.linphone/call_block_list.txt", tmp_path);
+	else
+		sprintf(path, "%s/.linphone/chat_block_list.txt", tmp_path);
+
 	block_list = fopen(path, "a");
 
 	if(block_list == NULL) return -1;
@@ -3431,7 +3439,7 @@ void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
 	}
 	
 
-	if (linphone_check_address_block(tmp)){
+	if (linphone_check_address_block(tmp,1)){
 		//decline the call if blocked
 		linphone_core_decline_call(lc, call,LinphoneReasonDeclined);
 	}

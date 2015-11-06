@@ -255,8 +255,6 @@ static void call_received(SalOp *h){
 	LinphoneCall *call;
 	char *alt_contact;
 	LinphoneAddress *from_addr=NULL;
-	//Linh's modification
-	LinphoneAddress *from_addr_for_check = NULL;
 	LinphoneAddress  *to_addr=NULL;
 	LinphoneAddress *from_address_to_search_if_me=NULL; /*address used to know if I'm the caller*/
 	SalMediaDescription *md;
@@ -339,12 +337,9 @@ static void call_received(SalOp *h){
 	}
 	
 	//check call address if blocked
-	from_addr_for_check = from_addr;
-	linphone_address_clean(from_addr_for_check);
-	tmp_addr = linphone_address_as_string(from_addr_for_check);
+	tmp_addr = linphone_address_as_string_uri_only(from_addr);
 	
-	if (linphone_check_address_block(tmp_addr)){
-		linphone_address_destroy(from_addr_for_check);
+	if (linphone_check_address_block(tmp_addr,1)){		
 		sal_call_decline(h,SalReasonForbidden,NULL);
 		sal_op_release(h);
 		ms_free(tmp_addr);

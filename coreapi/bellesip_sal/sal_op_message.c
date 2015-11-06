@@ -16,6 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
+/* modified by Le Ngoc Linh
+changes are made in sal_process_incoming_message()
+if message is plain text, check if "from" sip address is in chat block list
+if yes, goto error
+*/
+
 #include "sal_impl.h"
 
 #include "linphonecore.h"
@@ -179,6 +186,11 @@ void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *eve
 				,belle_sip_header_call_id_get_call_id(call_id)
 				,belle_sip_header_cseq_get_seq_number(cseq));
 		salmsg.from=from;
+		
+
+		if(linphone_check_address_block(from,0))
+			goto error;
+
 		/* if we just deciphered a message, use the deciphered part(which can be a rcs xml body pointing to the file to retreive from server)*/
 		if (cipher_xml) {
 			salmsg.text = (char *)decryptedMessage;

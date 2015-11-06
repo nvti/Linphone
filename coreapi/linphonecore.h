@@ -418,8 +418,8 @@ LINPHONE_PUBLIC void linphone_address_set_password(LinphoneAddress *addr, const 
 LINPHONE_PUBLIC const char *linphone_address_get_password(const LinphoneAddress *addr);
 LINPHONE_PUBLIC void linphone_address_set_header(LinphoneAddress *addr, const char *header_name, const char *header_value);
 LINPHONE_PUBLIC	void linphone_address_destroy(LinphoneAddress *u);
-LINPHONE_PUBLIC int linphone_check_address_block(char *address);
-LINPHONE_PUBLIC int linphone_add_blocklist(char *address);
+LINPHONE_PUBLIC int linphone_check_address_block(char *address, int callblock);
+LINPHONE_PUBLIC int linphone_add_blocklist(char *address, int callblock);
 
 /**
  * Create a #LinphoneAddress object by parsing the user supplied address, given as a string.
