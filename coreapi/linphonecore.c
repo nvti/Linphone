@@ -3373,6 +3373,11 @@ int linphone_add_blocklist(char *address, int callblock){
 
 	return 0;
 }
+
+char ** linphone_core_get_blocklist(int type){
+	return NULL;
+}
+
 void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
 	char *barmesg;
 	char *tmp;

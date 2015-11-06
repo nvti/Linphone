@@ -498,6 +498,7 @@ BUNDLEDIR = $(BUNDLEPREFIX)$(MACAPPNAME)
 LINPHONE_ADDITIONAL_DEPENDENCIES_PREFIX = /usr/local
 all: config.h
 	mkdir -p $(HOME)/.linphone
+	touch $(HOME)/.linphone/block_list.txt
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
