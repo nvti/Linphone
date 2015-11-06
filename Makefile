@@ -299,6 +299,7 @@ LN_S = ln -s
 LTLIBICONV = -liconv
 LTLIBINTL = 
 LTLIBOBJS = 
+LT_SYS_LIBRARY_PATH = 
 MAKEINFO = ${SHELL} /home/t-u/Documents/MultiMedia/linphone/linphone-3.8.5/missing makeinfo
 MANIFEST_TOOL = :
 MD5SUM = md5sum
@@ -498,7 +499,8 @@ BUNDLEDIR = $(BUNDLEPREFIX)$(MACAPPNAME)
 LINPHONE_ADDITIONAL_DEPENDENCIES_PREFIX = /usr/local
 all: config.h
 	mkdir -p $(HOME)/.linphone
-	touch $(HOME)/.linphone/block_list.txt
+	touch $(HOME)/.linphone/call_block_list.txt
+	touch $(HOME)/.linphone/chat_block_list.txt
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
 .SUFFIXES:
