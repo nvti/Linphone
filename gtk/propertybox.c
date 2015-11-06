@@ -805,6 +805,67 @@ void linphone_gtk_clear_passwords(GtkWidget *button){
 }
 
 enum{
+	BLOCKLIST_NAME,
+	BLOCKLIST_NCOLUMNS
+};
+
+static void linphone_gtk_init_block_list(GtkTreeView *listview){
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+	GtkTreeSelection *select;
+
+	GtkListStore *store = gtk_list_store_new (BLOCKLIST_NCOLUMNS, G_TYPE_STRING);
+
+	gtk_tree_view_set_model(listview,GTK_TREE_MODEL(store));
+	g_object_unref(G_OBJECT(store));
+
+	renderer = gtk_cell_renderer_text_new ();
+	column = gtk_tree_view_column_new_with_attributes (_("Name"),
+                                                   renderer,
+                                                   "text", CODEC_NAME,
+						"foreground",CODEC_COLOR,
+                                                   NULL);
+	g_signal_connect(G_OBJECT(renderer),"edited",G_CALLBACK(bitrate_edited),store);
+	gtk_tree_view_append_column (listview, column);
+	
+
+	/* Setup the selection handler */
+	select = gtk_tree_view_get_selection (listview);
+	gtk_tree_selection_set_mode (select, GTK_SELECTION_SINGLE);
+}
+
+static void linphone_gtk_show_blocklist(GtkTreeView *listview, char** list)
+{
+	char ** elem;
+	GtkTreeIter iter;
+	GtkListStore *store=GTK_LIST_STORE(gtk_tree_view_get_model(listview));
+	GtkTreeSelection *selection;
+
+	gtk_list_store_clear(store);
+	for(elem=list; elem!=NULL; elem++){
+		char * name = *elem;
+		/* get an iterator */
+		gtk_list_store_append(store,&iter);
+		gtk_list_store_set(store,&iter,	BLOCKLIST_NAME, name);
+	}
+
+
+
+	/* Setup the selection handler */
+	selection = gtk_tree_view_get_selection (listview);
+	gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
+	//gtk_tree_view_columns_autosize(GTK_TREE_VIEW (sec->interfaces));
+
+}
+
+static void linphone_gtk_draw_blocklist(GtkTreeView *v, int type){ /* 0=call, 1=mess*/
+	char **list;
+	list = linphone_core_get_blocklist(type);
+	
+	linphone_gtk_show_blocklist(v, list);
+}
+
+enum{
 	PROXY_CONFIG_IDENTITY,
 	PROXY_CONFIG_REF,
 	PROXY_CONFIG_NCOL
@@ -1473,7 +1534,7 @@ void linphone_gtk_show_parameters(void){
 	const char *tmp;
 	LinphoneAddress *contact;
 	LinphoneFirewallPolicy pol;
-	GtkWidget *codec_list;
+	GtkWidget *codec_list, *call_blocklist, *mess_blocklist;
 	int mtu;
 	int ui_advanced;
 	LCSipTransports tr;
@@ -1487,6 +1548,8 @@ void linphone_gtk_show_parameters(void){
 		return;
 	}
 	codec_list=linphone_gtk_get_widget(pb,"codec_list");
+	call_blocklist=linphone_gtk_get_widget(pb, "call_block_list");
+	mess_blocklist=linphone_gtk_get_widget(pb, "mess_block_list");
 
 	/* NETWORK CONFIG */
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(linphone_gtk_get_widget(pb,"ipv6_enabled")),
@@ -1611,9 +1674,14 @@ void linphone_gtk_show_parameters(void){
 	} else {
 		// hide the LDAP tab
 		GtkNotebook* notebook = GTK_NOTEBOOK(linphone_gtk_get_widget(pb, "notebook1"));
-		gtk_notebook_remove_page(notebook,5);
+		gtk_notebook_remove_page(notebook,6);
 	}
 
+	/* BLOCK LIST CONFIG */
+	linphone_gtk_init_block_list(GTK_TREE_VIEW(call_blocklist));
+	linphone_gtk_init_block_list(GTK_TREE_VIEW(mess_blocklist));
+	linphone_gtk_draw_blocklist(GTK_TREE_VIEW(call_blocklist), 0);
+	linphone_gtk_draw_blocklist(GTK_TREE_VIEW(mess_blocklist), 1);
 	gtk_widget_show(pb);
 }
 
