@@ -834,16 +834,16 @@ static void linphone_gtk_init_block_list(GtkTreeView *listview){
 	gtk_tree_selection_set_mode (select, GTK_SELECTION_SINGLE);
 }
 
-static void linphone_gtk_show_blocklist(GtkTreeView *listview, char** list)
+static void linphone_gtk_show_blocklist(GtkTreeView *listview, const MSList* list)
 {
-	char ** elem;
+	const MSList* elem;
 	GtkTreeIter iter;
 	GtkListStore *store=GTK_LIST_STORE(gtk_tree_view_get_model(listview));
 	GtkTreeSelection *selection;
 
 	gtk_list_store_clear(store);
-	for(elem=list; elem!=NULL; elem++){
-		char * name = *elem;
+	for(elem=list; elem!=NULL; elem=elem->next){
+		char * name = (char *)elem->data;
 		/* get an iterator */
 		gtk_list_store_append(store,&iter);
 		gtk_list_store_set(store,&iter,	BLOCKLIST_NAME, name);
@@ -859,8 +859,8 @@ static void linphone_gtk_show_blocklist(GtkTreeView *listview, char** list)
 }
 
 static void linphone_gtk_draw_blocklist(GtkTreeView *v, int type){ /* 0=call, 1=mess*/
-	char **list;
-	list = linphone_core_get_blocklist(type);
+	const MSList *list;
+	list = linphone_core_get_blocklist(linphone_gtk_get_core(), type);
 	
 	linphone_gtk_show_blocklist(v, list);
 }

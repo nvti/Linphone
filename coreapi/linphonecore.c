@@ -1265,6 +1265,42 @@ static void ui_config_read(LinphoneCore *lc)
 	call_logs_read_from_config_file(lc);
 }
 
+static void blocklist_read(LinphoneCore *lc){
+	char tmp[100]= {'\0'};
+
+	//list's reading
+	FILE *block_list;
+	char path[100];
+	sprintf(path, "%s/.linphone/call_block_list.txt", getenv("HOME"));
+
+	block_list = fopen(path, "r+");
+	
+	if(block_list == NULL) return;
+	lc->call_blocklist = NULL;
+
+	while(fgets(tmp,100,block_list)!=NULL){
+		char* pos = strchr(tmp,'\n');
+		*pos = '\0';
+		lc->call_blocklist = ms_list_append(lc->call_blocklist, ms_strdup(tmp));
+	}
+	//close file
+	fclose(block_list);
+
+	sprintf(path, "%s/.linphone/chat_block_list.txt", getenv("HOME"));
+
+	block_list = fopen(path, "r+");
+	
+	if(block_list == NULL) return;
+	lc->mess_blocklist = NULL;
+
+	while(fgets(tmp,100,block_list)!=NULL){
+		char* pos = strchr(tmp,'\n');
+		*pos = '\0';
+		lc->mess_blocklist = ms_list_append(lc->mess_blocklist, ms_strdup(tmp));
+	}
+	//close file
+	fclose(block_list);
+}
 /*
 static void autoreplier_config_init(LinphoneCore *lc)
 {
@@ -1537,6 +1573,7 @@ static void linphone_core_start(LinphoneCore * lc) {
 	lc->presence_model=linphone_presence_model_new_with_activity(LinphonePresenceActivityOnline, NULL);
 	misc_config_read(lc);
 	ui_config_read(lc);
+	blocklist_read(lc);
 #ifdef TUNNEL_ENABLED
 	if (lc->tunnel) {
 		linphone_tunnel_configure(lc->tunnel);
@@ -3374,8 +3411,9 @@ int linphone_add_blocklist(char *address, int callblock){
 	return 0;
 }
 
-char ** linphone_core_get_blocklist(int type){
-	return NULL;
+const MSList* linphone_core_get_blocklist(const LinphoneCore *lc, int type){
+	if(type) return lc->mess_blocklist;
+	return lc->call_blocklist;
 }
 
 void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){

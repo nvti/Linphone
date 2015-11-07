@@ -420,7 +420,7 @@ LINPHONE_PUBLIC void linphone_address_set_header(LinphoneAddress *addr, const ch
 LINPHONE_PUBLIC	void linphone_address_destroy(LinphoneAddress *u);
 LINPHONE_PUBLIC int linphone_check_address_block(char *address, int callblock);
 LINPHONE_PUBLIC int linphone_add_blocklist(char *address, int callblock);
-LINPHONE_PUBLIC	char **linphone_core_get_blocklist(int type);
+LINPHONE_PUBLIC	const MSList *linphone_core_get_blocklist(const LinphoneCore *lc, int type);
 
 /**
  * Create a #LinphoneAddress object by parsing the user supplied address, given as a string.
