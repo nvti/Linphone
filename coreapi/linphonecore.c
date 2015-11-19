@@ -1274,7 +1274,7 @@ static void blocklist_read(LinphoneCore *lc){
 	sprintf(path, "%s/.linphone/call_block_list.txt", getenv("HOME"));
 
 	block_list = fopen(path, "r+");
-	
+
 	if(block_list == NULL) return;
 	lc->call_blocklist = NULL;
 
@@ -1289,7 +1289,7 @@ static void blocklist_read(LinphoneCore *lc){
 	sprintf(path, "%s/.linphone/chat_block_list.txt", getenv("HOME"));
 
 	block_list = fopen(path, "r+");
-	
+
 	if(block_list == NULL) return;
 	lc->mess_blocklist = NULL;
 
@@ -3358,62 +3358,104 @@ bool_t linphone_core_incompatible_security(LinphoneCore *lc, SalMediaDescription
 	return linphone_core_is_media_encryption_mandatory(lc) && linphone_core_get_media_encryption(lc)==LinphoneMediaEncryptionSRTP && !sal_media_description_has_srtp(md);
 }
 
-int linphone_check_address_block(char *address, int callblock){
-	//blocked address read from block list
-	char *blocked_addr = NULL;
-	size_t len = 0;
-	int check = 0;
-
-	//list's reading
-	FILE *block_list;
-	ssize_t read;
-	char * tmp_path = getenv("HOME");
-	char path[100];
-	if(callblock)
-		sprintf(path, "%s/.linphone/call_block_list.txt", tmp_path);
-	else
-		sprintf(path, "%s/.linphone/chat_block_list.txt", tmp_path);
-	block_list = fopen(path, "rt");
-	
-	if(block_list == NULL) return -1;
-	while((read=getline(&blocked_addr, &len, block_list)) != -1){
-		if (*(blocked_addr+strlen(blocked_addr)-1) == '\n')
-			*(blocked_addr+strlen(blocked_addr)-1) = '\0';
-		if(strcmp(blocked_addr,address) == 0){
-			check = 1;
-			break;
-		}
-	}
-	//close file
-	fclose(block_list);
-	if(blocked_addr)
-		free(blocked_addr);
-	return check;
+MSList* linphone_core_get_blocklist(const LinphoneCore *lc, int type){
+	if(type) return lc->mess_blocklist;
+	return lc->call_blocklist;
 }
 
-int linphone_add_blocklist(char *address, int callblock){
+int linphone_check_address_block(const LinphoneCore *lc, char *address, int type){
+	const MSList * elem;
+	MSList * list = linphone_core_get_blocklist(lc, type);
+
+	for(elem=list; elem!=NULL; elem=elem->next){
+		char * name = (char *)elem->data;
+		if(strcmp(name, address) == 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+int linphone_add_blocklist(LinphoneCore *lc, const char *address, int type){
 	FILE *block_list;
 	char * tmp_path = getenv("HOME");
 	char path[100];
 	
-	if(callblock)
-		sprintf(path, "%s/.linphone/call_block_list.txt", tmp_path);
-	else
+	if(type)
 		sprintf(path, "%s/.linphone/chat_block_list.txt", tmp_path);
+	else
+		sprintf(path, "%s/.linphone/call_block_list.txt", tmp_path);
 
 	block_list = fopen(path, "a");
 
 	if(block_list == NULL) return -1;
 
 	fprintf(block_list, "%s\n", address);
+	if(type)
+		lc->mess_blocklist = ms_list_append(lc->mess_blocklist, ms_strdup(address));
+	else
+		lc->call_blocklist = ms_list_append(lc->call_blocklist, ms_strdup(address));
+
 	fclose(block_list);
 
 	return 0;
 }
 
-const MSList* linphone_core_get_blocklist(const LinphoneCore *lc, int type){
-	if(type) return lc->mess_blocklist;
-	return lc->call_blocklist;
+int linphone_core_write_blocklist(const LinphoneCore *lc, int type){
+	const MSList * list = linphone_core_get_blocklist(lc, type);
+	const MSList * elem;
+	FILE *block_list;
+	char * tmp_path = getenv("HOME");
+	char path[100];
+
+	if(type)
+		sprintf(path, "%s/.linphone/chat_block_list.txt", tmp_path);
+	else
+		sprintf(path, "%s/.linphone/call_block_list.txt", tmp_path);
+
+	block_list = fopen(path, "w");
+
+	if(block_list == NULL) return -1;
+	printf("Open file done!\n");
+
+	for(elem = list; elem != NULL; elem = elem->next){
+		char * address = (char *)elem->data;
+		printf("%s\n", address);
+		fprintf(block_list, "%s\n", address);
+	}
+
+	fclose(block_list);
+
+	printf("Write file done!\n");
+	return 0;
+}
+
+int linphone_core_del_blocklist(LinphoneCore *lc, char * data, int type){
+	// MSList * list = linphone_core_get_blocklist(lc, type);
+	MSList * elem;
+	int done = -1;
+	if(type)
+		for(elem = lc->mess_blocklist; elem != NULL; elem = elem->next){
+			char * name = (char *)elem->data;
+			if(strcmp(name, data) == 0){
+				lc->mess_blocklist = ms_list_remove_link(lc->mess_blocklist, elem);
+				done = 0;
+				break;
+			}
+		}
+	else
+		for(elem = lc->call_blocklist; elem != NULL; elem = elem->next){
+			char * name = (char *)elem->data;
+			if(strcmp(name, data) == 0){
+				lc->call_blocklist = ms_list_remove_link(lc->call_blocklist, elem);
+				done = 0;
+				break;
+			}
+		}
+
+	if(done == 0 && linphone_core_write_blocklist(lc, type) == 0)
+		return 0;
+	else return -1;
 }
 
 void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
@@ -3479,12 +3521,6 @@ void linphone_core_notify_incoming_call(LinphoneCore *lc, LinphoneCall *call){
 		if (sal_call_get_replaces(call->op)!=NULL && lp_config_get_int(lc->config,"sip","auto_answer_replacing_calls",1)){
 			linphone_core_accept_call(lc,call);
 		}
-	}
-	
-
-	if (linphone_check_address_block(tmp,1)){
-		//decline the call if blocked
-		linphone_core_decline_call(lc, call,LinphoneReasonDeclined);
 	}
 
 	linphone_call_unref(call);

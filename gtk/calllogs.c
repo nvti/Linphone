@@ -111,8 +111,8 @@ void linphone_gtk_call_log_add_to_call_blocklist(GtkWidget *w){
 			la = linphone_call_log_get_dir(cl)==LinphoneCallIncoming ? linphone_call_log_get_from(cl) : linphone_call_log_get_to(cl);
 			if (la != NULL){
 				char *uri=linphone_address_as_string_uri_only(la);
-				if(linphone_check_address_block(uri,1) == 0){
-					linphone_add_blocklist(uri,1);
+				if(linphone_check_address_block(linphone_gtk_get_core(), uri,0) == 0){
+					linphone_add_blocklist(linphone_gtk_get_core(), uri,0);
 				}
 			}
 
@@ -138,8 +138,8 @@ void linphone_gtk_call_log_add_to_chat_blocklist(GtkWidget *w){
 			
 			if (la != NULL){
 				char *uri=linphone_address_as_string_uri_only(la);
-				if(linphone_check_address_block(uri,0) == 0){
-					linphone_add_blocklist(uri,0);
+				if(linphone_check_address_block(linphone_gtk_get_core(), uri, 1) == 0){
+					linphone_add_blocklist(linphone_gtk_get_core(), uri,1);
 				}
 			}
 

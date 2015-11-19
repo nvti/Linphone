@@ -114,13 +114,13 @@ void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *eve
 	bool_t cipher_xml=FALSE;
 	bool_t rcs_filetransfer=FALSE;
 	uint8_t *decryptedMessage = NULL;
+	LinphoneCore *lc=(LinphoneCore *)sal_get_user_pointer(sal_op_get_sal(op));
 
 	from_header=belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req),belle_sip_header_from_t);
 	content_type=belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req),belle_sip_header_content_type_t);
 	/* check if we have a xml/cipher message to be decrypted */
 	if (content_type && (cipher_xml=is_cipher_xml(content_type))) {
 		/* access the zrtp cache to get keys needed to decipher the message */
-		LinphoneCore *lc=(LinphoneCore *)sal_get_user_pointer(sal_op_get_sal(op));
 		FILE *CACHEFD = fopen(lc->zrtp_secrets_cache, "rb+");
 		if (CACHEFD == NULL) {
 			ms_warning("Unable to access ZRTP ZID cache to decrypt message");
@@ -188,7 +188,7 @@ void sal_process_incoming_message(SalOp *op,const belle_sip_request_event_t *eve
 		salmsg.from=from;
 		
 
-		if(linphone_check_address_block(from,0))
+		if(linphone_check_address_block(lc, from,1))
 			goto error;
 
 		/* if we just deciphered a message, use the deciphered part(which can be a rcs xml body pointing to the file to retreive from server)*/

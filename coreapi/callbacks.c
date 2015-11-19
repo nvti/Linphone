@@ -339,7 +339,7 @@ static void call_received(SalOp *h){
 	//check call address if blocked
 	tmp_addr = linphone_address_as_string_uri_only(from_addr);
 	
-	if (linphone_check_address_block(tmp_addr,1)){		
+	if (linphone_check_address_block(lc, tmp_addr,0)){		
 		sal_call_decline(h,SalReasonForbidden,NULL);
 		sal_op_release(h);
 		ms_free(tmp_addr);

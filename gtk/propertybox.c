@@ -767,6 +767,120 @@ static void linphone_gtk_codec_move(GtkWidget *button, int dir){
 	}
 }
 
+enum{
+	BLOCKLIST_NAME,
+	BLOCKLIST_NCOLUMNS
+};
+
+static void linphone_gtk_show_blocklist(GtkTreeView *listview, const MSList* list)
+{
+	const MSList* elem;
+	GtkTreeIter iter;
+	GtkListStore *store=GTK_LIST_STORE(gtk_tree_view_get_model(listview));
+	GtkTreeSelection *selection;
+
+	gtk_list_store_clear(store);
+	for(elem = list; elem != NULL; elem = elem->next){
+		char * name = (char *)elem->data;
+		/* get an iterator */
+		gtk_list_store_append(store,&iter);
+		gtk_list_store_set(store,&iter,	BLOCKLIST_NAME, name, -1);
+	}
+
+
+
+	/* Setup the selection handler */
+	selection = gtk_tree_view_get_selection (listview);
+	gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
+	//gtk_tree_view_columns_autosize(GTK_TREE_VIEW (sec->interfaces));
+
+}
+
+static void linphone_gtk_draw_blocklist(GtkTreeView *v, int type){ /* 0=call, 1=mess*/
+	const MSList *list;
+	list = linphone_core_get_blocklist(linphone_gtk_get_core(), type);
+	
+	linphone_gtk_show_blocklist(v, list);
+}
+
+// char * get_data_from_treeview(GtkTreeView *v){
+// 	GtkTreeSelection *sel=gtk_tree_view_get_selection(v);
+// 	GtkTreeModel *mod;
+// 	GtkListStore *store;
+// 	GtkTreeIter iter;
+// 	char * data = NULL;
+
+// 	if (gtk_tree_selection_get_selected(sel,&mod,&iter)){
+// 		store=GTK_LIST_STORE(mod);
+// 		gtk_tree_model_get (mod, &iter, BLOCKLIST_NAME, &data, -1);
+// 		return data;
+// 	}
+// 	return NULL;
+// }
+
+static void linphone_gtk_blocklist_delete(GtkWidget *button, int type){
+	GtkTreeView *v;
+	GtkTreeSelection *sel;
+	GtkTreeModel *mod;
+	GtkListStore *store;
+	GtkTreeIter iter;
+	char * data = NULL;
+
+	if(type)
+		v = GTK_TREE_VIEW(linphone_gtk_get_widget(gtk_widget_get_toplevel(button),"mess_block_list"));
+	else
+		v = GTK_TREE_VIEW(linphone_gtk_get_widget(gtk_widget_get_toplevel(button),"call_block_list"));
+
+	sel=gtk_tree_view_get_selection(v);
+
+	if (gtk_tree_selection_get_selected(sel,&mod,&iter)){
+		store=GTK_LIST_STORE(mod);
+		gtk_tree_model_get (mod, &iter, BLOCKLIST_NAME, &data, -1);
+		if(linphone_core_del_blocklist(linphone_gtk_get_core(), data, type) == 0)
+			gtk_list_store_remove (store, &iter);
+	}
+}
+
+static void linphone_gtk_blocklist_add(GtkWidget *button, int type){
+	GtkWidget *w=linphone_gtk_create_window("blocklist");
+	GtkLabel *l = GTK_LABEL(linphone_gtk_get_widget(w, "label47"));
+	if(type)
+		gtk_label_set_text(l, "Message block list");
+	else gtk_label_set_text(l, "Call block list");
+
+	gtk_widget_show(w);
+}
+
+static void linphone_gtk_blocklist_edit(GtkWidget *button, int type){
+	GtkWidget *w=linphone_gtk_create_window("blocklist");
+	GtkLabel *l = GTK_LABEL(linphone_gtk_get_widget(w, "label47"));
+	GtkEntry *entry = GTK_ENTRY(linphone_gtk_get_widget(w, "name"));
+	GtkTreeView *v;
+	GtkTreeSelection *sel;
+	GtkTreeModel *mod;
+	GtkTreeIter iter;
+	char * data = NULL;
+	
+	gtk_window_set_title(GTK_WINDOW(w), "Edit");
+	if(type)
+		v = GTK_TREE_VIEW(linphone_gtk_get_widget(gtk_widget_get_toplevel(button),"mess_block_list"));
+	else
+		v = GTK_TREE_VIEW(linphone_gtk_get_widget(gtk_widget_get_toplevel(button),"call_block_list"));
+
+	sel=gtk_tree_view_get_selection(v);
+
+	if (gtk_tree_selection_get_selected(sel,&mod,&iter)){
+		gtk_tree_model_get (mod, &iter, BLOCKLIST_NAME, &data, -1);
+		gtk_entry_set_text(entry, data);
+	}
+
+	if(type)
+		gtk_label_set_text(l, "Message block list");
+	else gtk_label_set_text(l, "Call block list");
+
+	gtk_widget_show(w);
+}
+
 static void linphone_gtk_codec_set_enable(GtkWidget *button, gboolean enabled){
 	GtkTreeView *v=GTK_TREE_VIEW(linphone_gtk_get_widget(gtk_widget_get_toplevel(button),"codec_list"));
 	GtkTreeSelection *sel=gtk_tree_view_get_selection(v);
@@ -782,6 +896,87 @@ static void linphone_gtk_codec_set_enable(GtkWidget *button, gboolean enabled){
 		gtk_list_store_set(store,&iter,CODEC_STATUS, enabled ? _("Enabled") : _("Disabled"),
 		                   CODEC_COLOR,(gpointer)get_codec_color(linphone_gtk_get_core(),pt), -1);
 	}
+}
+
+void linphone_gtk_blocklist_ok(GtkWidget *button){
+	GtkWidget *mw = linphone_gtk_get_main_window();
+	GtkWidget *pb = (GtkWidget *) g_object_get_data(G_OBJECT(mw), "parameters");
+	GtkWidget * call_blocklist=linphone_gtk_get_widget(pb, "call_block_list");
+	GtkWidget * mess_blocklist=linphone_gtk_get_widget(pb, "mess_block_list");
+
+	GtkWidget *w=gtk_widget_get_toplevel(button);
+
+	const char * name = NULL;
+	GtkLabel *l = GTK_LABEL(linphone_gtk_get_widget(w, "label47"));
+	int type1, type2;
+	const char * label = gtk_label_get_text(l);
+	const char * title = gtk_window_get_title(GTK_WINDOW(w));
+
+	if(label[0] == 'M') type1 = 1;		//Mess
+	else type1 = 0;						//Call
+
+	if(title[0] == 'A') type2 = 1;		//Add
+	else type2 = 0;						//Edit
+
+	printf("%s\n", label);
+	if(gtk_entry_get_text_length(GTK_ENTRY(linphone_gtk_get_widget(w,"name"))) != 0){
+		name = gtk_entry_get_text(GTK_ENTRY(linphone_gtk_get_widget(w,"name")));
+		printf("%s\n", name);
+	}
+
+	if(type2 == 0){					//Edit
+		GtkTreeSelection * select;
+		GtkTreeModel *mod;
+		GtkTreeIter iter;
+		char * data = NULL;
+
+		if(type1)
+			select = gtk_tree_view_get_selection(GTK_TREE_VIEW(mess_blocklist));
+		else
+			select = gtk_tree_view_get_selection(GTK_TREE_VIEW(call_blocklist));
+
+		if (gtk_tree_selection_get_selected(select,&mod,&iter))
+			gtk_tree_model_get (mod, &iter, BLOCKLIST_NAME, &data, -1);
+
+		linphone_core_del_blocklist(linphone_gtk_get_core(), data, type1);
+	}
+
+	linphone_add_blocklist(linphone_gtk_get_core(), name, type1);
+
+	if(type1)			//Mess
+		linphone_gtk_draw_blocklist(GTK_TREE_VIEW(mess_blocklist), 1);
+	else				//Call
+		linphone_gtk_draw_blocklist(GTK_TREE_VIEW(call_blocklist), 0);
+
+	gtk_widget_destroy(w);
+}
+
+void linphone_gtk_blocklist_cancel(GtkWidget *button){
+	gtk_widget_destroy(gtk_widget_get_toplevel(button));
+}
+
+void linphone_gtk_call_bl_add(GtkWidget *button){
+	linphone_gtk_blocklist_add(button, 0);
+}
+
+void linphone_gtk_call_bl_edit(GtkWidget *button){
+	linphone_gtk_blocklist_edit(button, 0);
+}
+
+void linphone_gtk_call_bl_delete(GtkWidget *button){
+	linphone_gtk_blocklist_delete(button, 0);
+}
+
+void linphone_gtk_mess_bl_add(GtkWidget *button){
+	linphone_gtk_blocklist_add(button, 1);
+}
+
+void linphone_gtk_mess_bl_edit(GtkWidget *button){
+	linphone_gtk_blocklist_edit(button, 1);
+}
+
+void linphone_gtk_mess_bl_delete(GtkWidget *button){
+	linphone_gtk_blocklist_delete(button, 1);
 }
 
 void linphone_gtk_codec_up(GtkWidget *button){
@@ -803,11 +998,6 @@ void linphone_gtk_codec_disable(GtkWidget *button){
 void linphone_gtk_clear_passwords(GtkWidget *button){
 	linphone_core_clear_all_auth_info(linphone_gtk_get_core());
 }
-
-enum{
-	BLOCKLIST_NAME,
-	BLOCKLIST_NCOLUMNS
-};
 
 static void linphone_gtk_init_block_list(GtkTreeView *listview){
 	GtkCellRenderer *renderer;
@@ -832,37 +1022,6 @@ static void linphone_gtk_init_block_list(GtkTreeView *listview){
 	/* Setup the selection handler */
 	select = gtk_tree_view_get_selection (listview);
 	gtk_tree_selection_set_mode (select, GTK_SELECTION_SINGLE);
-}
-
-static void linphone_gtk_show_blocklist(GtkTreeView *listview, const MSList* list)
-{
-	const MSList* elem;
-	GtkTreeIter iter;
-	GtkListStore *store=GTK_LIST_STORE(gtk_tree_view_get_model(listview));
-	GtkTreeSelection *selection;
-
-	gtk_list_store_clear(store);
-	for(elem=list; elem!=NULL; elem=elem->next){
-		char * name = (char *)elem->data;
-		/* get an iterator */
-		gtk_list_store_append(store,&iter);
-		gtk_list_store_set(store,&iter,	BLOCKLIST_NAME, name);
-	}
-
-
-
-	/* Setup the selection handler */
-	selection = gtk_tree_view_get_selection (listview);
-	gtk_tree_selection_set_mode (selection, GTK_SELECTION_SINGLE);
-	//gtk_tree_view_columns_autosize(GTK_TREE_VIEW (sec->interfaces));
-
-}
-
-static void linphone_gtk_draw_blocklist(GtkTreeView *v, int type){ /* 0=call, 1=mess*/
-	const MSList *list;
-	list = linphone_core_get_blocklist(linphone_gtk_get_core(), type);
-	
-	linphone_gtk_show_blocklist(v, list);
 }
 
 enum{
